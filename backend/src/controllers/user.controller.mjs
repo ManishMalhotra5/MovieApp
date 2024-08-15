@@ -1,0 +1,218 @@
+import mongoose from "mongoose";
+import ApiError from "../utils/ApiError.mjs";
+import ApiResponse from "../utils/ApiResponse.mjs";
+import asyncHandler from "../utils/asyncHandler.mjs";
+import { User } from "../models/user.model.mjs";
+import jwt from "jsonwebtoken";
+
+const generateTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+        return { accessToken, refreshToken };
+    } catch (error) {
+        throw new ApiError(
+            "Unable to generate Access and refresh token " + error.message,
+            500
+        );
+    }
+};
+
+const options = {
+    httpOnly: true,
+    secure: true,
+};
+
+const registerUser = asyncHandler(async (req, res) => {
+    const { email, passcode } = req.body;
+    if (!email) {
+        throw new ApiError(402, "email is required");
+    }
+    if (!passcode) {
+        throw new ApiError(402, "passcode is required");
+    }
+    const existedUser = await User.findOne({ email });
+    if (existedUser) {
+        throw new ApiError("User with email already existed", 403);
+    }
+    const user = await User.create({
+        email: email,
+        passcode: passcode,
+    });
+
+    return res.status(200).json(new ApiResponse(200, "Register successfully"));
+});
+
+const loginUser = asyncHandler(async (req, res) => {
+    const { email, passcode } = req.body;
+
+    if (!email) {
+        throw new ApiError("Email is required to login", 403);
+    }
+    if (!passcode) {
+        throw new ApiError("Passcode is required", 403);
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw new ApiError("User with this email doesn't exist", 404);
+    }
+    const isPasscodeValid = user.isPasscodeCorrect(passcode);
+    if (!isPasscodeValid) {
+        throw new ApiError("Passcode is incorrect", 401);
+    }
+    const { accessToken, refreshToken } = await generateTokens(user._id);
+    const loggedUser = await User.findById(user._id).select(
+        "-passcode -refreshToken"
+    );
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedUser,
+                    accessToken,
+                    refreshToken,
+                },
+                "User loged in successfully"
+            )
+        );
+});
+
+const refreshAcessToken = asyncHandler(async (req, res) => {
+    const incommingToken = req.cookies.refreshToken;
+    if (!incommingToken) {
+        throw new ApiError("Refresh token not found", 401);
+    }
+    const user = await User.findById(req.user._id);
+    if (!user) {
+        throw new ApiError("Unauthoried user", 403);
+    }
+    if (incommingToken !== user.refreshToken) {
+        throw new ApiError("unauthorized user wrong token", 403);
+    }
+
+    const { accessToken, refreshToken } = await generateTokens(user._id);
+
+    return res.status(200)
+        .json(new ApiResponse(200, {
+            refresToken: accessToken,
+            accessToken: refreshToken
+        }, " Access token refreshed successfully"))
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    if (!req.user) {
+        throw new ApiError("unauthorized request no user is logged in", 401);
+    }
+    const user = await User.findById(req.user._id).select(
+        "-passcode -refreshToken"
+    );
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, { user }, "successfully fetch the current user")
+        );
+});
+
+const deleteUser = asyncHandler(async (req, res) => {
+    try {
+        const user = req.user;
+        if (!user) {
+            throw new ApiError("unauthorized request", 403);
+        }
+        await User.findByIdAndDelete(user._id);
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(200, {}, "User Account has been deleted successfully")
+            );
+    } catch (error) {
+        throw new ApiError("unauthorized request" + error.message, 403);
+    }
+});
+
+const updateUserName = asyncHandler(async (req, res) => {
+    if (!req.user) {
+        throw new ApiError("Unathorized request you can't make updation", 403);
+    }
+    const { firstName, lastName } = req.body;
+
+    if (!firstName) {
+        throw new ApiError("Can't set name to empty ", 401);
+    }
+
+    const user = await User.findById(req.user?._id).select(
+        "-passcode -refreshToken"
+    );
+    user.firstName = firstName;
+    user.lastName = lastName;
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, user, "User name changed successfully"));
+});
+
+const updatePasscode = asyncHandler(async (req, res) => {
+    if (!req.user) {
+        throw new ApiError("Unathorized request you can't make updation", 403);
+    }
+    const { currentPasscode, newPasscode } = req.body;
+    console.log(currentPasscode, newPasscode);
+    if (!currentPasscode) {
+        throw new ApiError("Please Enter current passcode", 401);
+    }
+
+    const user = await User.findById(req.user?._id);
+
+    const isPasscodeValid = await user.isPasscodeCorrect(currentPasscode);
+
+    if (!isPasscodeValid) {
+        throw new ApiError("Passcode is wrong please provide right passcode", 403);
+    }
+
+    if (!newPasscode) {
+        throw new ApiError("Can't set passcode to empty ", 401);
+    }
+
+    user.passcode = newPasscode;
+
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "User passcode changed successfully"));
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+
+    await User.findByIdAndUpdate(req.user?._id,
+        {
+            $unset: {
+                refreshToken: ""
+            }
+        }
+    )
+    return res.status(200)
+        .clearCookie("accessToken",options)
+        .clearCookie("refreshToken",options)
+        .json(new ApiResponse(200,{},"Logout successfully"));
+})
+
+export {
+    registerUser,
+    loginUser,
+    deleteUser,
+    refreshAcessToken,
+    getCurrentUser,
+    updateUserName,
+    updatePasscode,
+    logoutUser
+};
