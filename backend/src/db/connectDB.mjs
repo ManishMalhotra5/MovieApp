@@ -10,7 +10,7 @@ const connectDB = async () =>{
      const connectionInstant = await mongoose.connect(connectionStr);
      console.log("Connected to DB " + connectionInstant.connection.host);
    } catch (error) {
-    throw new ApiError("Failed to connect to Database"+error.message,500,error);
+    throw new ApiError(500,"Failed to connect to Database"+error.message,error);
    }
 }
 

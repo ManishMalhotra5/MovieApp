@@ -8,18 +8,18 @@ const verifyJWT = asyncHandler(async (req, _, next) => {
     try {
         const token = req.cookies?.accessToken ;
         if (!token) {
-            throw new ApiError( "token invalid or not found",401);
+            throw new ApiError(401, "token invalid or not found");
         }
         const decodeToken = jwt.verify(token, process.env.ACCESS_TOKEN_KEY);
         const user = await User.findById(decodeToken?._id).select("-passcode -refreshToken");
         if (!user) {
-            throw new ApiError("Unauthorized user",401);
+            throw new ApiError(401,"Unauthorized user");
         }
 
         req.user = user;
         next();
     } catch (error) {
-        throw new ApiError("Invalid Access Token : "+error.message,401);
+        throw new ApiError(401,"Invalid Access Token : "+error.message);
     }
 });
 

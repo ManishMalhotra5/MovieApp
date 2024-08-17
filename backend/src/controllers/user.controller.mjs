@@ -27,20 +27,24 @@ const options = {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-    const { email, passcode } = req.body;
+    const { email, passcode ,username} = req.body;
     if (!email) {
         throw new ApiError(402, "email is required");
     }
     if (!passcode) {
         throw new ApiError(402, "passcode is required");
     }
+    if(!username){
+        throw new ApiError(402,"username is required");
+    }
     const existedUser = await User.findOne({ email });
     if (existedUser) {
-        throw new ApiError("User with email already existed", 403);
+        throw new ApiError(403,"User with email already existed");
     }
     const user = await User.create({
         email: email,
         passcode: passcode,
+        userName:username
     });
 
     return res.status(200).json(new ApiResponse(200, "Register successfully"));
@@ -50,19 +54,19 @@ const loginUser = asyncHandler(async (req, res) => {
     const { email, passcode } = req.body;
 
     if (!email) {
-        throw new ApiError("Email is required to login", 403);
+        throw new ApiError(403,"Email is required to login");
     }
     if (!passcode) {
-        throw new ApiError("Passcode is required", 403);
+        throw new ApiError(403,"Passcode is required");
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-        throw new ApiError("User with this email doesn't exist", 404);
+        throw new ApiError( 404,"User with this email doesn't exist");
     }
     const isPasscodeValid = user.isPasscodeCorrect(passcode);
     if (!isPasscodeValid) {
-        throw new ApiError("Passcode is incorrect", 401);
+        throw new ApiError(401,"Passcode is incorrect");
     }
     const { accessToken, refreshToken } = await generateTokens(user._id);
     const loggedUser = await User.findById(user._id).select(
@@ -88,14 +92,14 @@ const loginUser = asyncHandler(async (req, res) => {
 const refreshAcessToken = asyncHandler(async (req, res) => {
     const incommingToken = req.cookies.refreshToken;
     if (!incommingToken) {
-        throw new ApiError("Refresh token not found", 401);
+        throw new ApiError(401,"Refresh token not found" );
     }
     const user = await User.findById(req.user._id);
     if (!user) {
-        throw new ApiError("Unauthoried user", 403);
+        throw new ApiError(403,"Unauthoried user");
     }
     if (incommingToken !== user.refreshToken) {
-        throw new ApiError("unauthorized user wrong token", 403);
+        throw new ApiError( 403,"unauthorized user wrong token");
     }
 
     const { accessToken, refreshToken } = await generateTokens(user._id);
@@ -109,7 +113,7 @@ const refreshAcessToken = asyncHandler(async (req, res) => {
 
 const getCurrentUser = asyncHandler(async (req, res) => {
     if (!req.user) {
-        throw new ApiError("unauthorized request no user is logged in", 401);
+        throw new ApiError( 401,"unauthorized request no user is logged in");
     }
     const user = await User.findById(req.user._id).select(
         "-passcode -refreshToken"
@@ -125,7 +129,7 @@ const deleteUser = asyncHandler(async (req, res) => {
     try {
         const user = req.user;
         if (!user) {
-            throw new ApiError("unauthorized request", 403);
+            throw new ApiError(403,"unauthorized request");
         }
         await User.findByIdAndDelete(user._id);
         return res
@@ -134,18 +138,18 @@ const deleteUser = asyncHandler(async (req, res) => {
                 new ApiResponse(200, {}, "User Account has been deleted successfully")
             );
     } catch (error) {
-        throw new ApiError("unauthorized request" + error.message, 403);
+        throw new ApiError( 403,"unauthorized request" + error.message);
     }
 });
 
 const updateUserName = asyncHandler(async (req, res) => {
     if (!req.user) {
-        throw new ApiError("Unathorized request you can't make updation", 403);
+        throw new ApiError( 403,"Unathorized request you can't make updation");
     }
     const { firstName, lastName } = req.body;
 
     if (!firstName) {
-        throw new ApiError("Can't set name to empty ", 401);
+        throw new ApiError( 401,"Can't set name to empty ");
     }
 
     const user = await User.findById(req.user?._id).select(
@@ -162,12 +166,12 @@ const updateUserName = asyncHandler(async (req, res) => {
 
 const updatePasscode = asyncHandler(async (req, res) => {
     if (!req.user) {
-        throw new ApiError("Unathorized request you can't make updation", 403);
+        throw new ApiError( 403,"Unathorized request you can't make updation");
     }
     const { currentPasscode, newPasscode } = req.body;
     console.log(currentPasscode, newPasscode);
     if (!currentPasscode) {
-        throw new ApiError("Please Enter current passcode", 401);
+        throw new ApiError( 401,"Please Enter current passcode");
     }
 
     const user = await User.findById(req.user?._id);
@@ -175,11 +179,11 @@ const updatePasscode = asyncHandler(async (req, res) => {
     const isPasscodeValid = await user.isPasscodeCorrect(currentPasscode);
 
     if (!isPasscodeValid) {
-        throw new ApiError("Passcode is wrong please provide right passcode", 403);
+        throw new ApiError( 403,"Passcode is wrong please provide right passcode");
     }
 
     if (!newPasscode) {
-        throw new ApiError("Can't set passcode to empty ", 401);
+        throw new ApiError(401,"Can't set passcode to empty ");
     }
 
     user.passcode = newPasscode;
