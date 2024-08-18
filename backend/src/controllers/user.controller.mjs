@@ -164,6 +164,24 @@ const updateUserName = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, user, "User name changed successfully"));
 });
 
+const updateUsername = asyncHandler(async (req,res)=>{
+    if(!req.user){
+        throw new ApiError(403,"Unauthorized request");
+    }
+    const {username} = req.body;
+    if(!username){
+        throw new ApiError(401,"Can't set username empty");
+    }
+    const user = await User.findById(req.user._id);
+    if(!user){
+        throw new ApiError(403,"Unable to locate user unathorized request");
+    }
+   user.userName = username;
+   await user.save({validateBeforeSave:false});
+   return res.status(200)
+   .json(new ApiResponse(200,{}, `Username has been changed to ${username} successfully` ))
+});
+
 const updatePasscode = asyncHandler(async (req, res) => {
     if (!req.user) {
         throw new ApiError( 403,"Unathorized request you can't make updation");
@@ -208,7 +226,11 @@ const logoutUser = asyncHandler(async (req, res) => {
         .clearCookie("accessToken",options)
         .clearCookie("refreshToken",options)
         .json(new ApiResponse(200,{},"Logout successfully"));
-})
+});
+
+const adminPage = asyncHandler(async (req,res) =>{
+    res.send("Hello welcome to admin page");
+});
 
 export {
     registerUser,
@@ -218,5 +240,7 @@ export {
     getCurrentUser,
     updateUserName,
     updatePasscode,
-    logoutUser
+    updateUsername,
+    logoutUser,
+    adminPage
 };
