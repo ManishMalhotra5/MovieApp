@@ -70,7 +70,7 @@ const loginUser = asyncHandler(async (req, res) => {
     }
     const { accessToken, refreshToken } = await generateTokens(user._id);
     const loggedUser = await User.findById(user._id).select(
-        "-passcode -refreshToken"
+        "-passcode -refreshToken -isAdmn -isSuperAdmin"
     );
     return res
         .status(200)
@@ -116,7 +116,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
         throw new ApiError( 401,"unauthorized request no user is logged in");
     }
     const user = await User.findById(req.user._id).select(
-        "-passcode -refreshToken"
+        "-passcode -refreshToken -isAdmn -isSuperAdmin"
     );
     return res
         .status(200)
@@ -153,7 +153,7 @@ const updateUserName = asyncHandler(async (req, res) => {
     }
 
     const user = await User.findById(req.user?._id).select(
-        "-passcode -refreshToken"
+        "-passcode -refreshToken -isAdmn -isSuperAdmin"
     );
     user.firstName = firstName;
     user.lastName = lastName;

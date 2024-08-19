@@ -1,13 +1,13 @@
 import { User } from "../models/user.model.mjs";
-import asyncHandler from "../utils/asyncHandler.mjs";
+
 
 const createSuperAdmin =  async ()=>{
     try {
-        const email = "manish21303105@gmail.com";
-        const passcode = "+6284644871+";
-        const firstName = "Manish";
-        const lastName = "Malhotra"
-        const userName = "manish.admin"
+        const email = process.env.EMAIL;
+        const passcode = process.env.PASSCODE;
+        const firstName = process.env.FIRSTNAME;
+        const lastName = process.env.LASTNAME;
+        const userName = process.env.USERNAME;
         const user = await User.findOne({email});
         if(user && user.isSuperAdmin){
             return
@@ -30,4 +30,4 @@ const createSuperAdmin =  async ()=>{
     }
 }
 
-createSuperAdmin();
+export default createSuperAdmin;
