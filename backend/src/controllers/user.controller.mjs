@@ -1,9 +1,8 @@
-import mongoose from "mongoose";
 import ApiError from "../utils/ApiError.mjs";
 import ApiResponse from "../utils/ApiResponse.mjs";
 import asyncHandler from "../utils/asyncHandler.mjs";
 import { User } from "../models/user.model.mjs";
-import jwt from "jsonwebtoken";
+
 
 const generateTokens = async (userId) => {
     try {
