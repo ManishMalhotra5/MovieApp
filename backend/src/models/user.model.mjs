@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
     refreshToken: {
       type: String
     },
-    profilePic : {
+    profile : {
       type : String
     },
     isAdmin : {
