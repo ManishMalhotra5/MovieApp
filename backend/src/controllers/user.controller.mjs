@@ -2,6 +2,7 @@ import ApiError from "../utils/ApiError.mjs";
 import ApiResponse from "../utils/ApiResponse.mjs";
 import asyncHandler from "../utils/asyncHandler.mjs";
 import { User } from "../models/user.model.mjs";
+import { uploadFileOnDrive } from "../googleDrive/google-drive.mjs";
 
 const generateTokens = async (userId) => {
   try {
@@ -40,17 +41,22 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(403, "User with email already existed");
   }
 
-  let profile;
-
-  if (req.file) {
-    profile = req.file;
+  const localPath = req.file.path;
+  if(!localPath){
+    throw new ApiError(404,"file not found");
   }
+  const profile = await uploadFileOnDrive(localPath);
+  if(!profile){
+    throw new ApiError(500,"failed to upload on drive");
+  }
+
+  console.log("profile : ",profile);
 
   const user = await User.create({
     email: email,
     passcode: passcode,
     userName: username,
-    profile: profile,
+    
   });
 
   return res.status(200).json(new ApiResponse(200, "Register successfully"));
