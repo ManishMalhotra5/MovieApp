@@ -1,14 +1,14 @@
 import { google } from "googleapis";
-import { client_id,client_secret,token,redirect_url } from "../config/googleCredentials.mjs";
+import dotenv from "dotenv";
+dotenv.config();
 
 const oauth2Client = new google.auth.OAuth2(
-  client_id,
-  client_secret,
-  redirect_url
+ process.env.GDRIVE_CLIENT_ID,
+ process.env.GDRIVE_CLIENT_SECRET,
+ process.env.GDRIVE_REDIRECT_URL
 );
-
 oauth2Client.setCredentials({
-  refresh_token: token,
+  refresh_token: process.env.GDRIVE_TOKEN
 });
 
 export default oauth2Client;

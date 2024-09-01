@@ -6,7 +6,7 @@ import { User } from "../models/user.model.mjs";
 const verifyJWT = asyncHandler(async (req, _, next) => {
 
     try {
-        const token = req.cookies?.accessToken ;
+        const token = req.cookies?.accessToken|| req.header('Authorization').replace('Bearer ', '');
         if (!token) {
             throw new ApiError(401, "token invalid or not found");
         }

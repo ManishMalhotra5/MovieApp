@@ -1,6 +1,11 @@
 import mongoose from "mongoose";
 
 const movieSchema = new mongoose.Schema({
+    id:{
+        type:String,
+        required:true,
+        unique : true
+    },
     title : {
         type: String,
         required : true,
@@ -12,10 +17,14 @@ const movieSchema = new mongoose.Schema({
     rating: {
         type: Number,
     },
-    movie : {
+    movieURL : {
         type : String,
         required: true,
         unique : true
+    },
+    movieTrailer : {
+        type:String,
+        required : true
     },
     thumbnail : {
         type : String,

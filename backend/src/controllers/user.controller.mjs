@@ -41,22 +41,17 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(403, "User with email already existed");
   }
 
-  const localPath = req.file.path;
-  if(!localPath){
-    throw new ApiError(404,"file not found");
-  }
-  const profile = await uploadFileOnDrive(localPath);
-  if(!profile){
-    throw new ApiError(500,"failed to upload on drive");
-  }
+  let profile;
 
-  console.log("profile : ",profile);
-
+  if (req.file) {
+    const localFilePath = req.file.path;
+    profile = await uploadFileOnDrive(localFilePath);
+  }
   const user = await User.create({
     email: email,
     passcode: passcode,
     userName: username,
-    
+    profile: profile,
   });
 
   return res.status(200).json(new ApiResponse(200, "Register successfully"));
@@ -135,6 +130,7 @@ const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id).select(
     "-passcode -refreshToken -isAdmn -isSuperAdmin"
   );
+
   return res
     .status(200)
     .json(
@@ -143,20 +139,16 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 const deleteUser = asyncHandler(async (req, res) => {
-  try {
-    const user = req.user;
-    if (!user) {
-      throw new ApiError(403, "unauthorized request");
-    }
-    await User.findByIdAndDelete(user._id);
-    return res
-      .status(200)
-      .json(
-        new ApiResponse(200, {}, "User Account has been deleted successfully")
-      );
-  } catch (error) {
-    throw new ApiError(403, "unauthorized request" + error.message);
+  const user = req.user;
+  if (!user) {
+    throw new ApiError(403, "unauthorized request");
   }
+  await User.findByIdAndDelete(user._id);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, {}, "User Account has been deleted successfully")
+    );
 });
 
 const updateUserName = asyncHandler(async (req, res) => {
@@ -189,7 +181,17 @@ const updateProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Profile not");
   }
 
-  const profile = req.file;
+  const localFilePath = req.file.path;
+
+  if(!localFilePath){
+    throw new ApiError(500,"Failed to load to profile");
+  }
+
+  const profile = uploadFileOnDrive(localFilePath);
+  
+  if(!profile){
+    throw new ApiError(500,"Failed to upload on cloud");
+  }
 
   const user = await User.findById(req.user._id);
   user.profile = profile;
@@ -269,8 +271,61 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Logout successfully"));
 });
 
-const adminPage = asyncHandler(async (req, res) => {
-  res.send("Hello welcome to admin page");
+const deleteUserByAdmin = asyncHandler(async (req, res) => {
+  if (!req.user.isAdmin) {
+    throw new ApiError(401, "You are not authorized to delete the user");
+  }
+  const { username } = req.params;
+
+  if (!username) {
+    throw new ApiError(404, "username is required");
+  }
+
+  await User.findOneAndDelete({username});
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Successfully deleted the user"));
+});
+
+const makeAdminExistedUser = asyncHandler(async (req, res) => {
+  if (!req.user.isAdmin) {
+    throw new ApiError(401, "You are not authorized to delete the user");
+  }
+  const { username } = req.params;
+  if (!username) {
+    throw new ApiError(404, "username is required");
+  }
+  const user = await User.findOne({user});
+  if (!user) {
+    throw new ApiError(404, "User with give username not found");
+  }
+  user.isAdmin = true;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Successfully made admin"));
+});
+
+const removeAdminExistedUser = asyncHandler(async (req, res) => {
+  if (!req.user.isSuperAdmin) {
+    throw new ApiError(401, "You are not authorized to delete the user");
+  }
+  const { username } = req.params;
+  if (!username) {
+    throw new ApiError(404, "username is required");
+  }
+  const user = await User.findOne({user});
+  if (!user) {
+    throw new ApiError(404, "User with give username not found");
+  }
+  user.isAdmin = false;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Successfully removed admin"));
 });
 
 export {
@@ -283,6 +338,8 @@ export {
   updatePasscode,
   updateUsername,
   logoutUser,
-  adminPage,
-  updateProfile
+  deleteUserByAdmin,
+  updateProfile,
+  removeAdminExistedUser,
+  makeAdminExistedUser
 };

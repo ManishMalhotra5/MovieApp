@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import asyncHandler from "../utils/asyncHandler.mjs";
 import { DB_NAME } from "../constants.mjs";
 import ApiError from "../utils/ApiError.mjs";
 
@@ -7,7 +6,6 @@ import ApiError from "../utils/ApiError.mjs";
 const connectDB = async () =>{
    try {
      const connectionStr = `${process.env.DB_URL}/${DB_NAME}`;
-     console.log(connectionStr);
      const connectionInstant = await mongoose.connect(connectionStr);
      console.log("Connected to DB " + connectionInstant.connection.host);
    } catch (error) {
