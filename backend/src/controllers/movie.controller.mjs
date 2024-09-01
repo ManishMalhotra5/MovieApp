@@ -11,11 +11,11 @@ const uploadMovie = asyncHandler(async (req, res) => {
   }
   const { id, title, description, rating, movieURL, movieTrailer } = req.body;
   console.log(id, title, description, rating, movieURL, movieTrailer);
-  if(!(id && title && movieURL && movieTrailer)){
-    throw new ApiError(404,"Please enter the required details")
+  if (!(id && title && movieURL && movieTrailer)) {
+    throw new ApiError(404, "Please enter the required details");
   }
 
-  const movieAlreadyThere = await Movie.findOne({id});
+  const movieAlreadyThere = await Movie.findOne({ id });
   if (movieAlreadyThere) {
     throw new ApiError(400, "Movie with id already in the database");
   }
@@ -43,7 +43,7 @@ const uploadMovie = asyncHandler(async (req, res) => {
     rating: rating,
     movieTrailer: movieTrailer,
     movieURL: movieURL,
-    thumbnail: thumbnail
+    thumbnail: thumbnail,
   });
 
   if (!movie) {
@@ -51,7 +51,8 @@ const uploadMovie = asyncHandler(async (req, res) => {
   }
 
   return res
-    .status(200).json(new ApiResponse(200, {}, "successfully upload the movie"));
+    .status(200)
+    .json(new ApiResponse(200, {}, "successfully upload the movie"));
 });
 
 const deleteMovie = asyncHandler(async (req, res) => {
@@ -64,10 +65,11 @@ const deleteMovie = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Please provide the appropriate Movie id");
   }
 
-  await Movie.findByIdAndDelete({id});
+  await Movie.findByIdAndDelete({ id });
 
   return res
-    .status(200).json(new ApiResponse(200, {}, "Successfully deleted the movie"));
+    .status(200)
+    .json(new ApiResponse(200, {}, "Successfully deleted the movie"));
 });
 
 const watchMovie = asyncHandler(async (req, res) => {
@@ -76,25 +78,37 @@ const watchMovie = asyncHandler(async (req, res) => {
 
 const downloadMovie = asyncHandler(async (req, res) => {
   if (!req.user) {
-    throw new ApiError(403,"You need to be subscriber in order to download a movie");
+    throw new ApiError(
+      403,
+      "You need to be subscriber in order to download a movie"
+    );
   }
-  console.log(req.params)
+  console.log(req.params);
   const { id } = req.params;
   console.log(id);
   if (!id) {
     throw new ApiError(404, "Please provide the appropriate Movie id");
   }
 
-  const movie = await Movie.findOne({id});
+  const movie = await Movie.findOne({ id });
 
-  if(!movie){
-    throw new ApiError(404,"Movie with the given id doesn't exist");
+  if (!movie) {
+    throw new ApiError(404, "Movie with the given id doesn't exist");
   }
 
   return res
-  .status(200)
-  .json(new ApiResponse(200,{movie},"Successfully fetched movie"));
-
+    .status(200)
+    .json(new ApiResponse(200, { movie }, "Successfully fetched movie"));
 });
 
-export { uploadMovie, deleteMovie, watchMovie, downloadMovie };
+const getSomeMovies = asyncHandler(async (req, res) => {
+  const movies = await Movie.find().limit(20);
+  if (!movies || movies.length === 0) {
+    throw new ApiError(404, "No movies found");
+  }
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { movies }, "Fetched some movies successfully"));
+});
+
+export { uploadMovie, deleteMovie, watchMovie, downloadMovie, getSomeMovies };

@@ -31,8 +31,8 @@ const uploadFileOnDrive = async (localFilePath) => {
     fs.unlinkSync(localFilePath);
     return `https://drive.google.com/file/d/${response.data.id}/view`;
   } catch (error) {
-    fs.unlinkSync(localFilePath);
     console.log("failed to upload on drive : " + error);
+    fs.unlinkSync(localFilePath);
     return null;
   }
 };
