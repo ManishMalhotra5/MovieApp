@@ -9,9 +9,9 @@ const uploadMovie = asyncHandler(async (req, res) => {
   if (!req.user.isAdmin) {
     throw new ApiError(403, "You are not authorized for this request");
   }
-  const { id, title, description, rating, movieURL, movieTrailer } = req.body;
+  const { id, title, description, rating, movieURL, movieTrailer ,genre} = req.body;
   console.log(id, title, description, rating, movieURL, movieTrailer);
-  if (!(id && title && movieURL && movieTrailer)) {
+  if (!(id && title && movieURL && movieTrailer && genre)) {
     throw new ApiError(404, "Please enter the required details");
   }
 
@@ -44,6 +44,7 @@ const uploadMovie = asyncHandler(async (req, res) => {
     movieTrailer: movieTrailer,
     movieURL: movieURL,
     thumbnail: thumbnail,
+    genre:genre
   });
 
   if (!movie) {

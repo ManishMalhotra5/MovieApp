@@ -17,6 +17,10 @@ const movieSchema = new mongoose.Schema({
     rating: {
         type: Number,
     },
+    genre :{
+        type: String,
+        required : true,
+    },
     movieURL : {
         type : String,
         required: true,
