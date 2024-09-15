@@ -2,14 +2,14 @@ import asyncHandler from "../utils/asyncHandler.mjs";
 
 import ApiError from "../utils/ApiError.mjs";
 import { Movie } from "../models/movie.model.mjs";
-import { uploadFileOnDrive } from "../googleDrive/google-drive.mjs";
 import ApiResponse from "../utils/ApiResponse.mjs";
+import { uploadOnCloudinary } from "../utils/cloudinary.mjs";
 
 const uploadMovie = asyncHandler(async (req, res) => {
   if (!req.user.isAdmin) {
     throw new ApiError(403, "You are not authorized for this request");
   }
-  const { id, title, description, rating, movieURL, movieTrailer ,genre} = req.body;
+  const { id, title, description, rating, movieURL, movieTrailer, genre } = req.body;
   console.log(id, title, description, rating, movieURL, movieTrailer);
   if (!(id && title && movieURL && movieTrailer && genre)) {
     throw new ApiError(404, "Please enter the required details");
@@ -30,7 +30,7 @@ const uploadMovie = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to load the Thumbnail");
   }
 
-  const thumbnail = await uploadFileOnDrive(localFilePath);
+  const thumbnail = await uploadOnCloudinary(localFilePath);
 
   if (!thumbnail) {
     throw new ApiError(500, "Failed to upload on cloud");
@@ -43,8 +43,8 @@ const uploadMovie = asyncHandler(async (req, res) => {
     rating: rating,
     movieTrailer: movieTrailer,
     movieURL: movieURL,
-    thumbnail: thumbnail,
-    genre:genre
+    thumbnail: thumbnail.url,
+    genre: genre
   });
 
   if (!movie) {

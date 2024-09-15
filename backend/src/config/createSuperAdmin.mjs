@@ -12,6 +12,7 @@ const createSuperAdmin =  async ()=>{
         if(user && user.isSuperAdmin){
             return
         }
+        console.log("---Super Admin creation protocol initiated---")
         const SuperAdmin =  await User.create({
             email : email,
             passcode : passcode,
@@ -25,6 +26,7 @@ const createSuperAdmin =  async ()=>{
         if(!SuperAdmin){
             console.log("Failed to create admin");
         }
+        console.log("---Super Admin created successfully---")
     } catch (error) {
         console.log(error.message);
     }

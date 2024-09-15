@@ -2,7 +2,7 @@ import ApiError from "../utils/ApiError.mjs";
 import ApiResponse from "../utils/ApiResponse.mjs";
 import asyncHandler from "../utils/asyncHandler.mjs";
 import { User } from "../models/user.model.mjs";
-import { uploadFileOnDrive } from "../googleDrive/google-drive.mjs";
+import { uploadOnCloudinary } from "../utils/cloudinary.mjs";
 
 const generateTokens = async (userId) => {
   try {
@@ -45,13 +45,13 @@ const registerUser = asyncHandler(async (req, res) => {
 
   if (req.file) {
     const localFilePath = req.file.path;
-    profile = await uploadFileOnDrive(localFilePath);
+    profile = await uploadOnCloudinary(localFilePath);
   }
   const user = await User.create({
     email: email,
     passcode: passcode,
     userName: username,
-    profile: profile,
+    profile: profile.url,
   });
 
   return res.status(200).json(new ApiResponse(200, "Register successfully"));
@@ -183,14 +183,14 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   const localFilePath = req.file.path;
 
-  if(!localFilePath){
-    throw new ApiError(500,"Failed to load to profile");
+  if (!localFilePath) {
+    throw new ApiError(500, "Failed to load to profile");
   }
 
-  const profile = uploadFileOnDrive(localFilePath);
-  
-  if(!profile){
-    throw new ApiError(500,"Failed to upload on cloud");
+  const profile = await uploadOnCloudinary(localFilePath);
+
+  if (!profile) {
+    throw new ApiError(500, "Failed to upload on cloud");
   }
 
   const user = await User.findById(req.user._id);
@@ -281,7 +281,7 @@ const deleteUserByAdmin = asyncHandler(async (req, res) => {
     throw new ApiError(404, "username is required");
   }
 
-  await User.findOneAndDelete({username});
+  await User.findOneAndDelete({ username });
 
   return res
     .status(200)
@@ -296,7 +296,7 @@ const makeAdminExistedUser = asyncHandler(async (req, res) => {
   if (!username) {
     throw new ApiError(404, "username is required");
   }
-  const user = await User.findOne({user});
+  const user = await User.findOne({ user });
   if (!user) {
     throw new ApiError(404, "User with give username not found");
   }
@@ -316,7 +316,7 @@ const removeAdminExistedUser = asyncHandler(async (req, res) => {
   if (!username) {
     throw new ApiError(404, "username is required");
   }
-  const user = await User.findOne({user});
+  const user = await User.findOne({ user });
   if (!user) {
     throw new ApiError(404, "User with give username not found");
   }
