@@ -6,6 +6,9 @@ import ApiResponse from "../utils/ApiResponse.mjs";
 import { uploadOnCloudinary } from "../utils/cloudinary.mjs";
 
 const uploadMovie = asyncHandler(async (req, res) => {
+	if (!req.user) {
+		throw new ApiError(403, "You need to login for this request");
+	}
 	if (!req.user.isAdmin) {
 		throw new ApiError(403, "You are not authorized for this request");
 	}
@@ -14,12 +17,15 @@ const uploadMovie = asyncHandler(async (req, res) => {
 		title,
 		description,
 		rating,
-		movieURL,
-		movieTrailer,
+		uri,
 		genre,
+		downloadLink,
+		director,
+		writers,
+		casts,
 	} = req.body;
-	console.log(id, title, description, rating, movieURL, movieTrailer);
-	if (!(id && title && movieURL && movieTrailer && genre)) {
+
+	if (!(id && title && uri && genre)) {
 		throw new ApiError(404, "Please enter the required details");
 	}
 
@@ -49,10 +55,12 @@ const uploadMovie = asyncHandler(async (req, res) => {
 		title: title,
 		description: description,
 		rating: rating,
-		movieTrailer: movieTrailer,
-		movieURL: movieURL,
-		thumbnail: thumbnail.url,
+		uri: uri,
+		thumbnail: thumbnail,
 		genre: genre,
+		downloadLink: downloadLink,
+		writers: writers || [],
+		casts: casts || [],
 	});
 
 	if (!movie) {
@@ -65,6 +73,9 @@ const uploadMovie = asyncHandler(async (req, res) => {
 });
 
 const deleteMovie = asyncHandler(async (req, res) => {
+	if (!req.user) {
+		throw new ApiError(403, "You need to login for this request");
+	}
 	if (!req.user.isAdmin) {
 		throw new ApiError(403, "You'r not authorized for this request");
 	}
@@ -91,8 +102,9 @@ const watchMovie = asyncHandler(async (req, res) => {
 	if (!movie) {
 		throw new ApiError(404, "Movie with the given id not found");
 	}
-
-	res.status(200).json(
+	movie.views = movie.views + 1;
+	await movie.save({ validateBeforeSave: false });
+	return res.status(200).json(
 		new ApiResponse(
 			200,
 			{
@@ -121,9 +133,21 @@ const downloadMovie = asyncHandler(async (req, res) => {
 		throw new ApiError(404, "Movie with the given id doesn't exist");
 	}
 
+	if (!movie.downloadLink) {
+		throw new ApiError(
+			404,
+			"Download link is not available for this movie"
+		);
+	}
 	return res
 		.status(200)
-		.json(new ApiResponse(200, { movie }, "Successfully fetched movie"));
+		.json(
+			new ApiResponse(
+				200,
+				{ download: movie.downloadLink },
+				"Successfully fetched movie"
+			)
+		);
 });
 
 const getSomeMovies = asyncHandler(async (req, res) => {
@@ -139,58 +163,130 @@ const getSomeMovies = asyncHandler(async (req, res) => {
 });
 
 const review = asyncHandler(async (req, res) => {
-  if(!req.user){
-    throw new ApiError(403,"You need to login for review");
-  }
-  const {reviewMsg , rating} = req.body;
+	if (!req.user) {
+		throw new ApiError(403, "You need to login for review");
+	}
+	const { review, rating } = req.body;
 
-  if(!reviewMsg){
-    throw new ApiError(404,"Empty review is not allowed");
-  }
-  const {id} = req.params;
-  if(!id){
-    throw new ApiError(404, "Please provide the appropriate Movie id");
-  }
-  const movie = await Movie.findOne({id});
-  const newReview = {
-    review : reviewMsg,
-    rating: rating,
-    author : req.user
-  }
+	if (!review) {
+		throw new ApiError(404, "Empty review is not allowed");
+	}
+	const { id } = req.params;
+	if (!id) {
+		throw new ApiError(404, "Please provide the appropriate Movie id");
+	}
+	const movie = await Movie.findOne({ id });
+	const newReview = {
+		review: review,
+		rating: rating,
+		author: req.user.username,
+	};
 
-  movie.reviews.push(newReview);
+	movie.reviews.push(newReview);
 
-  await movie.save({validateBeforeSave : false});
+	await movie.save({ validateBeforeSave: false });
 
-  res.status(200)
-  .json(200,new ApiResponse(200,{},"Successfully added the review"));
-
+	return res
+		.status(200)
+		.json(new ApiResponse(200, {}, "Successfully added the review"));
 });
 
-const search = asyncHandler(async (req,res) => {
-  const {title,genre} = req.query;
-  if(!(title || genre))
-  {
-    throw new ApiError(404,"Please provide title or genre");
-  }
-  const query = {};
-  if (title) {
-    query.title = { $regex: title, $options: 'i' }; // Case-insensitive search
-  }
+const search = asyncHandler(async (req, res) => {
+	const { title, genre } = req.query;
+	if (!(title || genre)) {
+		throw new ApiError(404, "Please provide title or genre");
+	}
+	const query = {};
+	if (title) {
+		query.title = { $regex: title, $options: "i" }; // Case-insensitive search
+	}
 
-  if (genre) {
-    query.genre = { $regex: genre, $options: 'i' }; // Case-insensitive search
-  }
+	if (genre) {
+		query.genre = { $regex: genre, $options: "i" }; // Case-insensitive search
+	}
 
-  const movies = await Movie.find({query});
+	const movies = await Movie.find({ query });
 
-  if(movies.length === 0){
-    throw new ApiError(404,"Movie not found");
-  }
+	if (movies.length === 0) {
+		throw new ApiError(404, "Movie not found");
+	}
 
-  res.status(200)
-  .json(new ApiResponse(200,{movies},"Movies fetched successfully"))
-
+	return res
+		.status(200)
+		.json(new ApiResponse(200, { movies }, "Movies fetched successfully"));
 });
 
-export { uploadMovie, deleteMovie, watchMovie, downloadMovie, getSomeMovies, review , search};
+const addDownloadLink = asyncHandler(async (req, res) => {
+	if (!req.user) {
+		throw new ApiError(403, "You need to login for this request");
+	}
+	if (!req.user.isAdmin) {
+		throw new ApiError(403, "You'r not authorized for this request");
+	}
+	const { id } = req.params;
+	const { downloadLink } = req.body;
+
+	if (!downloadLink) {
+		throw new ApiError(404, "Download Link not found");
+	}
+
+	if (!id) {
+		throw new ApiError(404, "Please provide the appropriate Movie id");
+	}
+
+	const movie = await Movie.findOneAndDelete({ id });
+	movie.downloadLink = downloadLink;
+	movie.save({ validateBeforeSave: false });
+	return res
+		.status(200)
+		.json(new ApiError(200, {}, "Download link added successfully"));
+});
+
+const getTopMovies = asyncHandler(async (req, res) => {
+	const topMovies = await Movie.find().sort({ rating: -1 }).limit(10);
+
+	if (!topMovies || topMovies.length === 0) {
+		throw new ApiError(404, "No top-rated movies found");
+	}
+
+	return res
+		.status(200)
+		.json(
+			new ApiResponse(
+				200,
+				{ topMovies },
+				"Top movies fetched successfully"
+			)
+		);
+});
+
+const mostWatchedMovies = asyncHandler(async (req, res) => {
+	const watchedMovies = await Movie.find().sort({ views: -1 }).limit(10);
+
+	if (!watchedMovies || watchedMovies.length === 0) {
+		throw new ApiError(404, "No watched movies found");
+	}
+
+	return res
+		.status(200)
+		.json(
+			new ApiResponse(
+				200,
+				{ watchedMovies },
+				"Most-watched movies fetched successfully"
+			)
+		);
+});
+
+export {
+	uploadMovie,
+	deleteMovie,
+	watchMovie,
+	downloadMovie,
+	getSomeMovies,
+	review,
+	search,
+	addDownloadLink,
+	getTopMovies,
+	mostWatchedMovies,
+};
