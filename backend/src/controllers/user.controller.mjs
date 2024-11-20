@@ -26,7 +26,7 @@ const options = {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-	const { email, passcode, username } = req.body;
+	const { email, passcode, username, firstName, lastName } = req.body;
 
 	if (!email) {
 		throw new ApiError(402, "email is required");
@@ -53,6 +53,8 @@ const registerUser = asyncHandler(async (req, res) => {
 		email: email,
 		passcode: passcode,
 		username: username,
+		firstName: firstName,
+		lastName: lastName,
 		profile: profile,
 	});
 
